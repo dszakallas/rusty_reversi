@@ -1,5 +1,11 @@
 [package]
-
 name = "rusty_reversi"
 version = "0.0.1"
 authors = [ "David Szakallas <david.szakallas@gmail.com>" ]
+license = "MIT"
+
+[lib]
+name = "game"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
