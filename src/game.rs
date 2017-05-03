@@ -1,15 +1,15 @@
+//! This module encapsulates the core game logic.
+
 use std::fmt;
 
-/// A `Color` is either black or white.
+/// Associates a piece with a player.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Color {
-    /// Color of the black player.
     Black,
-    /// Color of the white player.
     White
 }
-pub trait Flip { fn flip(&self) -> Color; }
-impl Flip for Color {
+impl Color {
+    /// Flipping a piece results in a piece of opposite color.
     fn flip(&self) -> Color {
         match *self {
             Color::Black => Color::White,
@@ -26,10 +26,12 @@ impl fmt::Display for Color {
     }
 }
 
-/// `Coord` is a position on the board.
+/// Denotes a position indexed by colum and row on the board.
 pub type Coord = (i8, i8);
 
-/// The constant `DIRECTIONS` enumerates all possible flip direction deltas on the board.
+/// Enumerates all possible flip directions on the board.
+///
+/// The first element of the product denotes delta in column index, the second delta in row index.
 pub const DIRECTIONS: [Coord; 8] = [
     (0, 1), // N
     (1, 1), // NE
@@ -41,12 +43,12 @@ pub const DIRECTIONS: [Coord; 8] = [
     (-1, 1) // NW
 ];
 
-/// `IllegalMove` lists the reasons why a move is illegal.
+/// Lists the reasons why a move is illegal.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum IllegalMove {
-    /// The cell is already occupied by `Color`
+    /// The cell is already occupied by the given color.
     Occupied(Color),
-    /// The move does not cause any disks to change color
+    /// The move does not cause any disks to be flipped over.
     Ineffective
 }
 impl fmt::Display for IllegalMove {
@@ -58,11 +60,14 @@ impl fmt::Display for IllegalMove {
     }
 }
 
-/// `LegalMove` holds the description of a legal move on the board.
+/// Holds the description of a legal move on the board.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct LegalMove {
+    /// The color being placed.
     pub color: Color,
+    /// Number of flipped pieced by direction enumerated in the same sequence as [`DIRECTIONS`](constant.DIRECTIONS.html).
     pub flips: [i8; 8],
+    /// The position on the board where to place the color.
     pub position: Coord
 }
 impl LegalMove {
@@ -93,12 +98,17 @@ impl LegalMove {
     }
 }
 
-/// 'Board' is a 8x8 matrix of cells which can hold disks.
+/// An 8x8 matrix of cells holding disks.
+///
+/// It is immutable and represents a constellation of pieces.
+/// If and only if two boards have the same constellation, are they considered
+/// equal.
 #[derive(Debug, PartialEq)]
 pub struct Board {
-    pub cells: [[Option<Color>; 8]; 8] // 8x8 board
+    pub cells: [[Option<Color>; 8]; 8]
 }
 impl Board {
+    /// Creates a board for the starting constellation.
     pub fn new() -> Board {
         let mut cells = [[None; 8]; 8];
         // Central cells occupied
@@ -109,7 +119,7 @@ impl Board {
         Board { cells: cells }
     }
 
-    /// Tests all the moves a given color can take on the board.
+    /// Tests all the moves a given player can take on the board.
     fn test(&self, color: Color) -> Vec<Vec<Result<LegalMove, IllegalMove>>> {
 
         // Tests whether there are valid flips on the position and returns them.
@@ -169,15 +179,23 @@ pub enum Game {
     End
 }
 
-/// Place is state that has the place move as continuation.
+/// The game state that has a placing move as continuation.
 pub struct Place {
+    /// The player who should place a piece next.
     pub player: Color,
+    /// If this move is retry, it contains the reason why the original move is illegal.
     pub retry_reason: Option<IllegalMove>,
+    /// Contains the fact for each cell on `board` whether placing the piece by `player` in that cell is legal or illegal.
+    /// Column is the primary index.
     pub moves: Vec<Vec<Result<LegalMove, IllegalMove>>>,
     pub board: Board
 }
 impl Place {
-    /// Place your disk on the selected coordinate. Returns new game state.
+    /// Place a piece with `self`'s color on the selected coordinate of `self`'s board.
+    ///
+    /// A legal move will result in a new board, as the constellation if pieces always change this way.
+    /// A move may be illegal, in which case the board remains the same and the player is signalled
+    /// by setting `retry_reason`to some [`IllegalMove`](enum.IllegalMove.html).
     pub fn place(self, selected_cell: Coord) -> Game {
         let (x, y) = selected_cell;
         match self.moves[x as usize][y as usize]  {
@@ -209,13 +227,18 @@ impl Place {
     }
 }
 
-/// Skip is state that has the skip move as continuation.
+/// The game state that has a skipping move as continuation.
+///
+/// Making explicit that a given player has no valid step in theircurrent
+/// turn is a simple way of notifying the player of this situation. Also
+/// makes a turn consist of exactly one move by each player, which can simplify
+/// logic in the UI.
 pub struct Skip {
     pub player: Color,
     pub board: Board
 }
 impl Skip {
-    /// Skip the next move. Returns new game state.
+    /// Skip the next move. Returns new game state. Board remains the same.
     pub fn skip(self) -> Game {
         let next_player = self.player.flip();
         let next_moves = self.board.test(next_player);
@@ -233,6 +256,7 @@ impl Skip {
     }
 }
 
+/// Initializes a game to the starting state.
 pub fn new_game() -> Game {
 
     let board = Board::new();

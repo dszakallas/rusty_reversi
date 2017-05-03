@@ -5,7 +5,7 @@ authors = [ "David Szakallas <david.szakallas@gmail.com>" ]
 license = "MIT"
 
 [lib]
-name = "game"
+name = "rusty_reversi"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]

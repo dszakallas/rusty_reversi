@@ -1,8 +1,9 @@
-extern crate game;
+extern crate rusty_reversi;
+
+use rusty_reversi::game;
 
 use game::new_game;
 use game::Game;
-use game::Place;
 use game::Board;
 
 #[test]
